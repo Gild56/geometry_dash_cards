@@ -1,0 +1,5 @@
+.vscode/
+__pycache__/
+secret.key
+update.json
+users_data.json

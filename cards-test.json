@@ -1,0 +1,44 @@
+{
+    "mythic": {
+        "Acu": {
+            "description": "\"Acu\" __(ah-kyoo)__ is a 2.1 solo Extreme Demon created, published, and verified by neigefeu on April 22, 2020. It is considered one of the first modern-style Extreme Demon levels to ever be released. A wide majority of players consider this to be a low-end Extreme Demon and a good entry-level Extreme Demon due to how accessible it is. The level is often considered by the community to be fun and consistent, but some disagree.",
+            "link": "https://www.youtube.com/watch?v=qTE6hE1a_vU"
+        },
+        "Nine Circles": {
+            "description": "\"Nine Circles\" (commonly abbreviated to NC) is a 1.9 solo Hard Demon level created, verified and published by Zobros. Nine Circles is the second most downloaded and liked level not featured in a map pack or gauntlet and one of the most iconic levels in Geometry Dash, receiving acclaim for its gameplay, design, effects and difficulty. Nine Circles and its design inspired many other users to create levels using similar visual effects, gameplay, and structuring, referred to as Nine Circles levels.",
+            "link": "https://www.youtube.com/watch?v=dOdPoU1ncOc"
+        },
+        "Bloodbath": {
+            "description": "\"Bloodbath\" is a 1.9 Extreme Demon mega-collaboration level hosted, verified and published by Riot on 12 August 2015. Following its verification, it was placed at #1 on the Demonlist. Barely any other level would challenge this position for over a year until Sakupen Hell by TrusTa was released, marking the beginning of Bloodbath's descent in perceived difficulty. It is the second instalment of the community-designated \"Apocalyptic Trilogy\" of similarly-themed Extreme Demon levels, succeeding Cataclysm and preceding Aftermath. A buffed and extended remake, Bloodlust, was verified by knobbelboy and released in 2.0. The first victor of the level was Quasar on 13 March 2016, 7 months after the verification. The level that almost dethroned Bloodbath was \"WcropoliX\" verified by BlassCFB on 30 July 2016, but it was rated only 8 years after its verification.",
+            "link": "https://www.youtube.com/watch?v=A6xe4tKdx_c"
+        },
+        "Change of Scene": {
+            "description": "\"Change of Scene\" is a 2.1 solo Easy Demon created, verified and published by bli. bli created this level for the Discord Gauntlet Contest, hosted by Viprin, with the Top 10 best levels planned to be included in two official gauntlets with five levels, each requiring all entries to have two distinct modes, a normal mode and an alternate mode toggleable at the first five seconds of the level. The level was released on 2 May 2023, around fifteen minutes before the contest deadline. The level shifts through several themes: theatre, films, video games and simulation. An alternate mode can be toggled on at the beginning of the level, adding bosses to many sections and altering the designs and effects. The first mode intends to feel like pure fiction, with the second mode bringing everything to life with more realistic designs.",
+            "link": "https://www.youtube.com/watch?v=alafxkFTprU"
+        },
+        "Demon Park": {
+            "description": "\"Demon Park\" is a 1.1 solo Easy Demon level created, verified and published by M2coL (formerly MidM2coL) on 17 October 2013. This level is the first ever Demon level, inspiring the addition of the Demon rating in Update 1.3 and is now considered one of the easiest. It is the first level in Demon Pack 1. Demon Park features rudimentary block designs with spikes layered inside blocks that point in the direction the player must go.",
+            "link": "https://www.youtube.com/watch?v=vEpRDJO3HGk"
+        },
+        "Creo": {
+            "description": "Creo is an electronic music artist. His real name is Clemens Michael Höberth and he lives in Vienna, Austria. He has been making music for over 14 years. His music is used often in the popular game Geometry Dash in making custom levels, with his most popular song being Dimension, due to the popularity of the level Black Blizzard by KrmaL.",
+            "link": "https://www.youtube.com/@CreoMusic"
+        },
+        "Waterflame": {
+            "description": "Waterflame is the stage name of Christian Mejlænder Krogsvold, a self-taught Norwegian video game composer, sound designer, and pixel artist born on February 26, 1989, in Oslo. He began composing music as a teenager in 2002, originally uploading tracks to Newgrounds under the alias Chainsaw_09.",
+            "link": "https://www.youtube.com/@WaterflameMusic"
+        },
+        "Zoink": {
+            "description": "Zoink (formerly Z01nk, zZoink in-game) is a skilled American player in Geometry Dash. He is widely considered to be one of the best players in the game, having beaten numerous top Extreme Demons with incredibly low attempt counts. He is the second player ever to complete the entire Top 75 hardest Demons on the Demonlist, following in the footsteps of nSwish.",
+            "link": "https://www.youtube.com/@Zoink"
+        },
+        "Michigun": {
+            "description": "Michigun (9 December 1996 - March 2021) was an Austrian mobile player in Geometry Dash. Known for his use of triple-spikes in his levels, which became his trademark, Michigun was also recognized as one of the fastest star-grinders in the game. He amassed a total of 61,639 stars, 12,502 user coins, 16,661 diamonds, 1,000 Demons and 17 creator points. Michigun also created numerous levels inspired by temples from The Legend of Zelda series.",
+            "link": "https://www.youtube.com/@Michigun"
+        },
+        "CherryTeam": {
+            "description": "Cherry Team (*cherryteam* in-game, also known as CherryBT, [cherry] and Cherry) is a creating team with many experienced layout creators, decorators and GFX artists. They are best known for their Extreme Demon projects, such as Void Wave, Cannon Bay, cytokinesis, Mayhem and the Top 10 levels KOCMOC and Firework, the latter of which briefly became the hardest Demon in the game. The team was founded and led by Vernam.",
+            "link": "https://www.youtube.com/@cherry_team_gd"
+        }
+    }
+}
