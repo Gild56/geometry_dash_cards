@@ -1,6 +1,6 @@
 # Geometry Dash Cards
 
-To launch the Telegram bot you need to create it:
+To launch the Telegram bot locally you need to create it:
 - Open Telegram and search for [BotFather](https://t.me/BotFather).
 - Type `/start`, then `/newbot`.
 - Choose a name for your bot.

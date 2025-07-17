@@ -20,6 +20,14 @@ RARITIES = {
     "common": "🔵 Common",
 }
 
+RARITY_POINTS = {
+    "common": 1,
+    "rare": 2,
+    "epic": 3,
+    "legendary": 4,
+    "mythic": 5,
+}
+
 
 def load_data() -> dict[str, list[int]]:
     try:
@@ -58,7 +66,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in data:
         data[user_id] = {
             "username": user.username or user.first_name,
-            "cards": []
+            "cards": [],
+            "points": 0
         }
         save_data(data)
         await update.message.reply_text(f"Welcome {data[user_id]['username']}! Your account was successfully created.")
@@ -105,11 +114,13 @@ async def card(update: Update, context: ContextTypes.DEFAULT_TYPE):
     link = cards_data[rarity][card]["link"]
 
     data[user_id]["cards"].append(card)
+    data[user_id]["points"] += RARITY_POINTS.get(rarity, 0)
+
     save_data(data)
 
     image_path = os.path.join(IMAGES_FOLDER, f"{card}.png")
 
-    rarity_display = RARITIES.get(rarity, rarity.title())
+    rarity_display = f"{RARITIES.get(rarity, rarity.title())} ({RARITY_POINTS.get(rarity, 0)} points)"
     caption = f"*{card}*\n\n*Rarity: {rarity_display}*\n\n{description}\n\n[Watch on YouTube]({link})"
 
     if os.path.exists(image_path):
@@ -147,7 +158,6 @@ async def collection(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     link = cards[card_name]["link"]
                     image_path = os.path.join(IMAGES_FOLDER, f"{card_name}.png")
                     rarity_display = RARITIES.get(rarity, rarity.title())
-                    caption = f"*{card_name}*\n\n*Rarity: {rarity_display}*\n\n{description}\n\n{link}"
                     caption = f"*{card_name}*\n\n*Rarity: {rarity_display}*\n\n{description}\n\n[Watch on YouTube]({link})"
 
                     if os.path.exists(image_path):
@@ -179,7 +189,7 @@ async def collection(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if count_total > 0:
             percentage = (count_owned / count_total) * 100
             cards_with_desc = [
-                f"• [{card}](https://t.me/{context.bot.username}?start=collection_{card.replace(' ', '_')})"
+                f"• [{card}](https://t.me/{context.bot.username}?text=%2Fcollection%20{card.replace(' ', '%20')})"
                 for card in owned_cards
             ]
             cards_text = "\n".join(cards_with_desc) if cards_with_desc else "None"
@@ -188,11 +198,84 @@ async def collection(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
     global_percentage = (total_owned / total_available) * 100 if total_available > 0 else 0
-    summary = f"*Total*: {total_owned}/{total_available} cards ({global_percentage:.1f}% complete)\n"
+    summary = f"*Total*: {total_owned}/{total_available} cards ({global_percentage:.1f}% complete) ({data[user_id]["points"]} points)\n"
 
     response = str(summary + "\n\n" + "\n\n".join(sorted_collection))
     await update.message.reply_text(response, parse_mode="Markdown")
 
+
+# /leaderboard
+async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data = load_data()
+    if context.args:
+        target_username = " ".join(context.args).strip().lower()
+
+        for user_id, info in data.items():
+            if info.get("username", "").lower() == target_username:
+                try:
+                    with open(CARDS_FILE, "r") as f:
+                        cards_data = json.load(f)
+                except FileNotFoundError:
+                    await update.message.reply_text("Card database not found.")
+                    return
+
+                user_cards = info.get("cards", [])
+                rarity_order = ["mythic", "legendary", "epic", "rare", "common"]
+                sorted_collection = []
+                total_owned = 0
+                total_available = 0
+
+                for rarity in rarity_order:
+                    all_cards = list(cards_data.get(rarity, {}).keys())
+                    owned = sorted([card for card in all_cards if card in user_cards])
+                    count_owned = len(owned)
+                    count_total = len(all_cards)
+
+                    total_owned += count_owned
+                    total_available += count_total
+
+                    if count_total > 0:
+                        percent = (count_owned / count_total) * 100
+                        links = [
+                            f"• {card}"
+                            for card in owned
+                        ]
+                        cards_text = "\n".join(links) if links else "None"
+                        sorted_collection.append(
+                            f"*{RARITIES.get(rarity, rarity.title())}* ({count_owned}/{count_total} - {percent:.1f}%):\n{cards_text}"
+                        )
+
+                global_percent = (total_owned / total_available) * 100 if total_available > 0 else 0
+                summary = f"*{info.get('username')}’s Collection* ({total_owned}/{total_available} cards - {global_percent:.1f}% complete)\nPoints: {info.get('points', 0)} pts\n"
+                response = summary + "\n\n" + "\n\n".join(sorted_collection)
+
+                await update.message.reply_text(response, parse_mode="Markdown")
+                return
+
+        await update.message.reply_text("Username not found.")
+        return
+
+    if not data:
+        await update.message.reply_text("No players found.")
+        return
+
+    leaderboard_list = [
+        (
+            info.get("username", "Unknown"),
+            len(info.get("cards", [])),
+            info.get("points", 0)
+        )
+        for info in data.values()
+    ]
+
+    leaderboard_list.sort(key=lambda x: x[2], reverse=True)
+
+    top = leaderboard_list[:10]
+    message = "*Leaderboard - Top 10 Players*\n\n"
+
+    for i, (username, card_count, points) in enumerate(top, start=1):
+        message += f"{i}. [{username}](https://t.me/{context.bot.username}?text=%2Fleaderboard%20{username.replace(' ', '%20')})): {card_count} cards, {points} pts\n"
+    await update.message.reply_text(message, parse_mode="Markdown")
 
 
 def main():
@@ -202,6 +285,8 @@ def main():
     app.add_handler(CommandHandler("info", info))
     app.add_handler(CommandHandler("card", card))
     app.add_handler(CommandHandler("collection", collection))
+    app.add_handler(CommandHandler("leaderboard", leaderboard))
+
 
     print("Running the bot...")
     app.run_polling()
