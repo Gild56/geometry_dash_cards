@@ -9,17 +9,17 @@ from datetime import datetime
 from telegram import Update, InputFile, BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
+
 if os.path.exists("secret.key"):
     with open("secret.key", "rb") as key_file:
-        key = key_file.read()
+        key = key_file.read().decode("utf-8").strip()
 else:
-    try:
-        token = os.getenv("BOT_TOKEN")
-    except:
-        print("Maybe you forgot to add a bot token. for more information, please read README.md")
+    key = os.getenv("BOT_TOKEN")
+    if not key:
+        raise ValueError("Bot token not found. Please set the BOT_TOKEN environment variable or provide a secret.key file. For more information, please read README.md")
 
 
-TOKEN = key.decode("utf-8").strip()
+TOKEN = key
 DATA_FILE = "users_data.json"
 CARDS_FILE = "cards.json"
 IMAGES_FOLDER = "resources/images"
