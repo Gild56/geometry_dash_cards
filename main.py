@@ -329,10 +329,10 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     button_username = username.replace(" ", "%20")
     keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton("View Collection", url=f"https://t.me/{context.bot.username}?start=collection%20{button_username}")
+        InlineKeyboardButton("View Collection", url = f"https://t.me/{context.bot.username}?text=/collection%20{button_username}")
     ]])
 
-    await reply(update, 
+    await reply(update,
         f"*Profile of {username}* (@{username}):\n"
         f"Top: #{rank}\n"
         f"Cards: {card_count}/{total_cards}\n"
