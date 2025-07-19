@@ -1,7 +1,8 @@
 import os
 import json
 import random
-from telegram import Update, InputFile
+import asyncio
+from telegram import Update, InputFile, BotCommand
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 with open("secret.key", "rb") as key_file:
@@ -40,9 +41,9 @@ def load_data() -> dict[str, list[int]]:
         return {}
 
 
-def save_data(data: int):
+def save_data(data: dict[str, dict]):
     with open(DATA_FILE, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def load_cards() -> list[str]:
@@ -274,11 +275,20 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = "*Leaderboard - Top 10 Players*\n\n"
 
     for i, (username, card_count, points) in enumerate(top, start=1):
-        message += f"{i}. [{username}](https://t.me/{context.bot.username}?text=%2Fleaderboard%20{username.replace(' ', '%20')})): {card_count} cards, {points} pts\n"
+        message += f"{i}. [{username}](https://t.me/{context.bot.username}?text=%2Fleaderboard%20{username.replace(' ', '%20')}): {card_count} cards, {points} pts\n"
     await update.message.reply_text(message, parse_mode="Markdown")
 
 
-def main():
+async def set_bot_commands(app):
+    await app.bot.set_my_commands([
+        BotCommand("start", "Create an account"),
+        BotCommand("info", "Informations about the bot"),
+        BotCommand("card", "Pick a card"),
+        BotCommand("collection", "See your collection"),
+        BotCommand("leaderboard", "See the leaderboard"),
+    ])
+
+async def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -287,10 +297,27 @@ def main():
     app.add_handler(CommandHandler("collection", collection))
     app.add_handler(CommandHandler("leaderboard", leaderboard))
 
+    asyncio.create_task(set_bot_commands(app))
 
     print("Running the bot...")
-    app.run_polling()
+    await app.run_polling()
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    async def safe_main():
+        try:
+            await main()
+        except Exception as e:
+            print(f"Erreur in the bot : {e}", file=sys.stderr)
+
+    try:
+        import nest_asyncio
+        nest_asyncio.apply()
+
+        loop = asyncio.get_event_loop()
+        loop.create_task(safe_main())
+        loop.run_forever()
+    except Exception as e:
+        print(f"Error in the execution : {e}", file=sys.stderr)
