@@ -1,11 +1,13 @@
 import os
+import sys
 import json
 import random
 import asyncio
-from datetime import datetime, timedelta
+import nest_asyncio
+from typing import Any
+from datetime import datetime
 from telegram import Update, InputFile, BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from telegram.helpers import escape_markdown
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
 
 with open("secret.key", "rb") as key_file:
@@ -13,8 +15,9 @@ with open("secret.key", "rb") as key_file:
 
 TOKEN = key.decode("utf-8").strip()
 DATA_FILE = "users_data.json"
-CARDS_FILE = "cards-test.json"
+CARDS_FILE = "cards.json"
 IMAGES_FOLDER = "resources/images"
+COOLDOWN_MINUTES = 30
 
 RARITIES = {
     "mythic": "🔴 Mythic",
@@ -34,20 +37,20 @@ RARITY_POINTS = {
 
 data_lock = asyncio.Lock()
 last_card_usage = {}
-COOLDOWN_SECONDS = 10
-CARDS_DATA = {}
+cooldown_lock = asyncio.Lock()
+cards_data = {}
 
 
 def load_all_cards():
-    global CARDS_DATA
+    global cards_data
     try:
         with open(CARDS_FILE, "r") as f:
-            CARDS_DATA = json.load(f)
+            cards_data = json.load(f)
     except FileNotFoundError:
-        CARDS_DATA = {}
+        cards_data = {}
 
 
-def load_data() -> dict:
+def load_data() -> dict[str, dict[str, Any]]:
     try:
         with open(DATA_FILE, "r") as f:
             content = f.read().strip()
@@ -56,19 +59,33 @@ def load_data() -> dict:
         return {}
 
 
-def save_data(data: dict):
+def save_data(data: dict[str, dict[str, Any]]):
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-async def safe_load_data():
+async def safe_load_data() -> dict[str, dict[str, Any]]:
     async with data_lock:
         return load_data()
 
 
-async def safe_save_data(data: dict):
+async def safe_save_data(data: dict[str, dict[str, Any]]):
     async with data_lock:
         save_data(data)
+
+
+async def reply(update: Update, text: str, **kwargs):
+    if update.message:
+        await update.message.reply_text(text, **kwargs)
+    elif update.callback_query:
+        await update.callback_query.message.reply_text(text, **kwargs)
+
+
+async def reply_photo(update: Update, photo, **kwargs):
+    if update.message:
+        await update.message.reply_photo(photo, **kwargs)
+    elif update.callback_query:
+        await update.callback_query.message.reply_photo(photo, **kwargs)
 
 
 # /start
@@ -84,14 +101,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "points": 0
         }
         await safe_save_data(data)
-        await update.message.reply_text(f"Welcome {data[user_id]['username']}! Your account was successfully created.")
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("About the bot", callback_data="info")],
+            [InlineKeyboardButton("Unlock a card", callback_data="card")],
+            [InlineKeyboardButton("View your collection", callback_data="collection")],
+            [InlineKeyboardButton("View your profile", callback_data="profile")],
+            [InlineKeyboardButton("Leaderboard", callback_data="leaderboard")]
+        ])
+        await update.message.reply_text(f"Welcome {data[user_id]['username']}! Your account was successfully created.", reply_markup=keyboard, parse_mode="Markdown")
     else:
         await update.message.reply_text("You already have an account!")
 
 
 # /info
 async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("I'm the official Geometry Dash Cards bot. Do /card to unlock a card and /collection to see your collection of cards.")
+    await reply(update, "It is the Geometry Dash Cards bot.\n/card unlocks a card\n/collection shows your collection\n/collecion <username> shows someone's collection\n/profile shows your profile\n/profile <username> shows someone's profile\n/info shows bot's description\n/leaderboard shows the leaderboard\n\nAutor: @Gild56 | [YouTube](https://youtube.com/@gild56gmd)\n[GildHub page](https://github.com/Gild56/geometry_dash_cards)", parse_mode="Markdown")
 
 
 # /card
@@ -99,35 +123,42 @@ async def card(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     now = datetime.now()
 
-    if user_id in last_card_usage:
-        elapsed = (now - last_card_usage[user_id]).total_seconds()
-        if elapsed < COOLDOWN_SECONDS:
-            await update.message.reply_text(f"Please wait {int(COOLDOWN_SECONDS - elapsed)}s before using /card again.")
-            return
-
-    last_card_usage[user_id] = now
+    async with cooldown_lock:
+        last_used = last_card_usage.get(user_id)
+        if last_used:
+            elapsed = (now - last_used).total_seconds() / 60
+            if elapsed < COOLDOWN_MINUTES:
+                remaining = int(COOLDOWN_MINUTES - elapsed) + 1
+                await reply(update,
+                    f"Please wait {remaining} more minutes before using /card again."
+                )
+                return
 
     data = await safe_load_data()
     if user_id not in data:
-        await update.message.reply_text("Do /start to create an account first.")
+        await reply(update, "Do /start to create an account first.")
         return
 
     owned_cards = set(data[user_id]["cards"])
 
     available_cards = [
         (rarity, card)
-        for rarity, cards in CARDS_DATA.items()
+        for rarity, cards in cards_data.items()
         for card in cards
         if card not in owned_cards
     ]
 
     if not available_cards:
-        await update.message.reply_text("You already have all the cards!")
+        await reply(update, "You already have all the cards!")
         return
 
+    last_card_usage[user_id] = now
+
     rarity, card = random.choice(available_cards)
-    card_info = CARDS_DATA[rarity][card]
+    card_info = cards_data[rarity][card]
     description = card_info["description"]
+    if not description:
+        description = "No description available"
     link = card_info["link"]
 
     data[user_id]["cards"].append(card)
@@ -138,15 +169,18 @@ async def card(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     rarity_display = f"{RARITIES.get(rarity, rarity.title())} ({RARITY_POINTS.get(rarity, 0)} points)"
     caption = f"*{card}*\n\n*Rarity: {rarity_display}*\n\n{description}"
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("\u25b6\ufe0f Watch on YouTube", url=link)]
-    ])
+    if link:
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("\u25b6\ufe0f Link", url=link)]
+        ])
+    else:
+        keyboard = None
 
     if os.path.exists(image_path):
         with open(image_path, "rb") as img:
-            await update.message.reply_photo(photo=InputFile(img), caption=caption, parse_mode="Markdown", reply_markup=keyboard)
+            await reply_photo(update, photo=InputFile(img), caption=caption, parse_mode="Markdown", reply_markup=keyboard)
     else:
-        await update.message.reply_text(caption + " (no image available)", parse_mode="Markdown", reply_markup=keyboard)
+        await reply(update, caption, parse_mode="Markdown", reply_markup=keyboard)
 
 
 # /collection [card name]
@@ -155,7 +189,7 @@ async def collection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = load_data()
 
     if user_id not in data:
-        await update.message.reply_text("Do /start to create an account first.")
+        await reply(update, "Do /start to create an account first.")
         return
 
     user_cards = data[user_id]["cards"]
@@ -164,7 +198,7 @@ async def collection(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(CARDS_FILE, "r") as f:
             cards_data = json.load(f)
     except FileNotFoundError:
-        await update.message.reply_text("Card database not found.")
+        await reply(update, "Card database not found.")
         return
 
     if context.args:
@@ -174,25 +208,30 @@ async def collection(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if card_name in cards:
                 if card_name in user_cards:
                     description = cards[card_name]["description"]
+                    if not description:
+                        description = "No description available"
                     link = cards[card_name]["link"]
                     image_path = os.path.join(IMAGES_FOLDER, f"{card_name}.png")
                     rarity_display = RARITIES.get(rarity, rarity.title())
                     caption = f"*{card_name}*\n\n*Rarity: {rarity_display}*\n\n{description}"
 
-                    keyboard = InlineKeyboardMarkup([
-                        [InlineKeyboardButton("\u25b6\ufe0f Watch on YouTube", url=link)]
-                    ])
+                    if link:
+                        keyboard = InlineKeyboardMarkup([
+                            [InlineKeyboardButton("\u25b6\ufe0f Link", url=link)]
+                        ])
+                    else:
+                        keyboard = None
 
                     if os.path.exists(image_path):
                         with open(image_path, "rb") as img:
-                            await update.message.reply_photo(photo=InputFile(img), caption=caption, parse_mode="Markdown", reply_markup=keyboard)
+                            await reply_photo(update, photo=InputFile(img), caption=caption, parse_mode="Markdown", reply_markup=keyboard)
                     else:
-                        await update.message.reply_text(caption + " (no image available)", parse_mode="Markdown", reply_markup=keyboard)
+                        await reply(update, caption, parse_mode="Markdown", reply_markup=keyboard)
                 else:
-                    await update.message.reply_text("You don't own this card.")
+                    await reply(update, "You don't own this card.")
                 return
 
-        await update.message.reply_text("This card doesn't exist.")
+        await reply(update, "This card doesn't exist.")
         return
 
     rarity_order = ["mythic", "legendary", "epic", "rare", "common"]
@@ -224,7 +263,7 @@ async def collection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     summary = f"*Total*: {total_owned}/{total_available} cards ({global_percentage:.1f}% complete) ({data[user_id]["points"]} points)\n"
 
     response = str(summary + "\n\n" + "\n\n".join(sorted_collection))
-    await update.message.reply_text(response, parse_mode="Markdown")
+    await reply(update, response, parse_mode="Markdown")
 
 
 # /leaderboard
@@ -232,7 +271,7 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = load_data()
 
     if not data:
-        await update.message.reply_text("No players found.")
+        await reply(update, "No players found.")
         return
 
     leaderboard_list = [
@@ -251,7 +290,7 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for i, (username, card_count, points) in enumerate(top, start=1):
         message += f"{i}. [{username}](https://t.me/{context.bot.username}?text=%2Fprofile%20{username.replace(' ', '%20')}): {card_count} cards, {points} pts\n"
-    await update.message.reply_text(message, parse_mode="Markdown")
+    await reply(update, message, parse_mode="Markdown")
 
 
 # /profile [username]
@@ -260,23 +299,20 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sender_id = str(update.effective_user.id)
     target_username = " ".join(context.args).strip().lower() if context.args else None
 
-    target_id = None
     target_data = None
 
     for uid, info in data.items():
         if target_username:
             if info.get("username", "").lower() == target_username:
-                target_id = uid
                 target_data = info
                 break
         else:
             if uid == sender_id:
-                target_id = uid
                 target_data = info
                 break
 
     if not target_data:
-        await update.message.reply_text("User not found. Make sure they have used /start.")
+        await reply(update, "User not found. Make sure they have used /start.")
         return
 
     leaderboard = sorted(
@@ -285,7 +321,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reverse=True
     )
     rank = leaderboard.index(target_data) + 1
-    total_cards = sum(len(cards) for cards in CARDS_DATA.values())
+    total_cards = sum(len(cards) for cards in cards_data.values())
 
     username = target_data.get("username", "Unknown")
     card_count = len(target_data.get("cards", []))
@@ -296,7 +332,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         InlineKeyboardButton("View Collection", url=f"https://t.me/{context.bot.username}?start=collection%20{button_username}")
     ]])
 
-    await update.message.reply_text(
+    await reply(update, 
         f"*Profile of {username}* (@{username}):\n"
         f"Top: #{rank}\n"
         f"Cards: {card_count}/{total_cards}\n"
@@ -306,9 +342,26 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "info":
+        await info(update, context)
+    elif query.data == "card":
+        await card(update, context)
+    elif query.data == "collection":
+        await collection(update, context)
+    elif query.data == "profile":
+        await profile(update, context)
+    elif query.data == "leaderboard":
+        await leaderboard(update, context)
+
+
+
 async def set_bot_commands(app):
     await app.bot.set_my_commands([
-        BotCommand("card", "Pick a card"),
+        BotCommand("card", "Unlock a card"),
         BotCommand("info", "Informations about the bot"),
         BotCommand("collection", "See your collection"),
         BotCommand("leaderboard", "See the leaderboard"),
@@ -327,6 +380,8 @@ async def main():
     app.add_handler(CommandHandler("collection", collection))
     app.add_handler(CommandHandler("leaderboard", leaderboard))
     app.add_handler(CommandHandler("profile", profile))
+    app.add_handler(CallbackQueryHandler(handle_button))
+
 
     asyncio.create_task(set_bot_commands(app))
 
@@ -334,11 +389,8 @@ async def main():
     await app.run_polling()
 
 if __name__ == "__main__":
-    import sys
     try:
-        import nest_asyncio
         nest_asyncio.apply()
-
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main())
     except Exception as e:

@@ -1,5 +1,5 @@
 .vscode/
 __pycache__/
 secret.key
-update.json
+update/
 users_data.json
