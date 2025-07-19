@@ -454,10 +454,14 @@ async def main():
     print("Running the bot...")
     await app.run_polling()
 
+
 if __name__ == "__main__":
     try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        import nest_asyncio
         nest_asyncio.apply()
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
-    except Exception as e:
-        print(f"Error in the execution : {e}", file=sys.stderr)
+        loop.create_task(main())
+        loop.run_forever()
+
