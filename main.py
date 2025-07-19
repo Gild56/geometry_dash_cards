@@ -115,7 +115,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # /info
 async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await reply(update, "It is the Geometry Dash Cards bot.\n/card unlocks a card\n/collection shows your collection\n/collecion <username> shows someone's collection\n/profile shows your profile\n/profile <username> shows someone's profile\n/info shows bot's description\n/leaderboard shows the leaderboard\n\nAutor: @Gild56 | [YouTube](https://youtube.com/@gild56gmd)\n[GildHub page](https://github.com/Gild56/geometry_dash_cards)", parse_mode="Markdown")
+    await reply(update, """
+            It is the Geometry Dash Cards bot.\n\n
+            • /card unlocks a card\n
+            • /collection shows your collection\n
+            • /collecion <card name> shows information about one of your unlocked cards\n
+            • /profile shows your profile\n
+            • /profile <username> shows someone's profile\n*
+            • /info shows bot's description\n
+            • /leaderboard shows the leaderboard\n\n
+            • /leaderboard <username> shows someone's collection\n\n
+            Autor: @Gild56 | [YouTube](https://youtube.com/@gild56gmd)\n[GildHub page](https://github.com/Gild56/geometry_dash_cards)
+        """, parse_mode="Markdown")
 
 
 # /card
@@ -266,12 +277,56 @@ async def collection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await reply(update, response, parse_mode="Markdown")
 
 
-# /leaderboard
+# /leaderboard [username]
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = load_data()
 
     if not data:
         await reply(update, "No players found.")
+        return
+
+    if context.args:
+        username = " ".join(context.args)
+        user_info = next((info for info in data.values() if info.get("username", "").lower() == username.lower()), None)
+
+        if not user_info:
+            await reply(update, f"Player *{username}* not found.", parse_mode="Markdown")
+            return
+
+        user_cards = user_info.get("cards", [])
+        try:
+            with open(CARDS_FILE, "r") as f:
+                cards_data = json.load(f)
+        except FileNotFoundError:
+            await reply(update, "Card database not found.")
+            return
+
+        rarity_order = ["mythic", "legendary", "epic", "rare", "common"]
+        sorted_collection = []
+        total_owned = 0
+        total_available = 0
+
+        for rarity in rarity_order:
+            all_cards = list(cards_data.get(rarity, {}).keys())
+            owned_cards = sorted([card for card in all_cards if card in user_cards])
+            count_owned = len(owned_cards)
+            count_total = len(all_cards)
+
+            total_owned += count_owned
+            total_available += count_total
+
+            if count_total > 0:
+                percentage = (count_owned / count_total) * 100
+                cards_text = "\n".join(f"• {card}" for card in owned_cards) or "None"
+                sorted_collection.append(
+                    f"*{RARITIES.get(rarity, rarity.title())}* ({count_owned}/{count_total} - {percentage:.1f}%):\n{cards_text}"
+                )
+
+        global_percentage = (total_owned / total_available) * 100 if total_available > 0 else 0
+        summary = f"*{username}'s Collection*: {total_owned}/{total_available} cards ({global_percentage:.1f}% complete) ({user_info.get('points', 0)} points)\n"
+
+        response = summary + "\n\n" + "\n\n".join(sorted_collection)
+        await reply(update, response, parse_mode="Markdown")
         return
 
     leaderboard_list = [
@@ -289,7 +344,9 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = "*Leaderboard - Top 10 Players*\n\n"
 
     for i, (username, card_count, points) in enumerate(top, start=1):
-        message += f"{i}. [{username}](https://t.me/{context.bot.username}?text=%2Fprofile%20{username.replace(' ', '%20')}): {card_count} cards, {points} pts\n"
+        profile_cmd = f"/profile {username.replace(' ', '%20')}"
+        message += f"{i}. [{username}](https://t.me/{context.bot.username}?text={profile_cmd}): {card_count} cards, {points} pts\n"
+
     await reply(update, message, parse_mode="Markdown")
 
 
@@ -329,7 +386,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     button_username = username.replace(" ", "%20")
     keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton("View Collection", url = f"https://t.me/{context.bot.username}?text=/collection%20{button_username}")
+        InlineKeyboardButton("View Collection", url = f"https://t.me/{context.bot.username}?text=/leaderboard%20{button_username}")
     ]])
 
     await reply(update,
