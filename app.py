@@ -458,7 +458,7 @@ async def main():
     asyncio.create_task(set_bot_commands(app))
 
     print("Running the bot...")
-    await app.run_polling()
+    await app.run_polling(close_loop=False)
 
 
 if __name__ == "__main__":

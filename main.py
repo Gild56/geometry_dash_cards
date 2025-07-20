@@ -23,7 +23,13 @@ def run_server():
 if __name__ == "__main__":
     threading.Thread(target=run_server, daemon=True).start()
 
-    import nest_asyncio
-    nest_asyncio.apply()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        if "Cannot close a running event loop" in str(e):
+            import nest_asyncio
+            nest_asyncio.apply()
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(main())
+        else:
+            raise
