@@ -3,7 +3,6 @@ import os
 import json
 import random
 import asyncio
-import nest_asyncio
 from typing import Any
 from datetime import datetime
 from telegram import Update, InputFile, BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
@@ -459,15 +458,3 @@ async def main():
 
     print("Running the bot...")
     await app.run_polling(close_loop=False)
-
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except RuntimeError as e:
-        import nest_asyncio
-        nest_asyncio.apply()
-        loop = asyncio.get_event_loop()
-        loop.create_task(main())
-        loop.run_forever()
-
