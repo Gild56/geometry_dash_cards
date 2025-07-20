@@ -20,11 +20,7 @@ def run_server():
 if __name__ == "__main__":
     threading.Thread(target=run_server, daemon=True).start()
 
-    try:
-        asyncio.run(main())
-    except RuntimeError:
-        import nest_asyncio
-        nest_asyncio.apply()
-        loop = asyncio.get_event_loop()
-        loop.create_task(main())
-        loop.run_forever()
+    import nest_asyncio
+    nest_asyncio.apply()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())

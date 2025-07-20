@@ -124,17 +124,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # /info
 async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await reply(update, """
-            It is the Geometry Dash Cards bot.\n\n
-            • /card unlocks a card\n
-            • /collection shows your collection\n
-            • /collecion <card name> shows information about one of your unlocked cards\n
-            • /profile shows your profile\n
-            • /profile <username> shows someone's profile\n*
-            • /info shows bot's description\n
-            • /leaderboard shows the leaderboard\n\n
-            • /leaderboard <username> shows someone's collection\n\n
-            Autor: @Gild56 | [YouTube](https://youtube.com/@gild56gmd)\n[GildHub page](https://github.com/Gild56/geometry_dash_cards)
-        """, parse_mode="Markdown")
+It is the Geometry Dash Cards bot.
+
+• /card unlocks a card
+• /collection shows your collection
+• /collecion <card name> shows information about one of your unlocked cards
+• /profile shows your profile
+• /profile <username> shows someone's profile
+• /info shows bot's description
+• /leaderboard shows the leaderboard
+• /leaderboard <username> shows someone's collection
+
+Autor: @Gild56 | [YouTube](https://youtube.com/@gild56gmd)\n[GildHub page](https://github.com/Gild56/geometry_dash_cards)
+""", parse_mode="Markdown")
 
 
 # /card
