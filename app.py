@@ -1,3 +1,4 @@
+import re
 import os
 import json
 import random
@@ -93,6 +94,10 @@ async def reply_photo(update: Update, photo, **kwargs):
         await update.callback_query.message.reply_photo(photo, **kwargs)
 
 
+def escape_markdown(text: str) -> str:
+    return re.sub(r'([_*[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+
+
 # /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -113,7 +118,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("View your profile", callback_data="profile")],
             [InlineKeyboardButton("Leaderboard", callback_data="leaderboard")]
         ])
-        await update.message.reply_text(f"Welcome {data[user_id]['username']}! Your account was successfully created.", reply_markup=keyboard, parse_mode="Markdown")
+        await update.message.reply_text(f"Welcome {escape_markdown(data[user_id]['username'])}! Your account was successfully created.", reply_markup=keyboard, parse_mode="Markdown")
     else:
         if not str(update.effective_user.id) == "1356285607":
             await update.message.reply_text("You already have an account!")
